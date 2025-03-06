@@ -1,0 +1,116 @@
+identify_parameters_task:
+  description: >
+    Analyze expert text in partenthesis to identify truck operation parameters and provide concise explanations for each parameter along with correct units.
+    
+    Note, that:
+    - You must identify all parameters mentioned in the text that are in the list: {dataset_columns}.
+    - You must find the most suitable parameter list out of the few most probable ones.
+    - You must analyse text thoroughly to identify all parameters and their descriptions, parameters might be described in different ways.
+    Follow the example to understand the task.
+    - You must not include examples in the output, only identified parameters from text.
+
+    ###EXAMPLE:
+    1) expert text: "If distance is greater than 150km, then it is considered as outlier. If machine has been working for more than 10 hours, then it is considered as outlier."
+       found dataset_columns: ["Distance [km]", "Motohours total [h]"]
+    2) expert text: "Machine might be considered as outlier if total number of compaction cycles is greater than 100, given that total fuel consumed is less than 40 dm3."
+       found dataset_columns: ["Total no. compaction cycles", "Total fuel consumed [dm3]"]
+    ###END OF EXAMPLE
+  
+    ###TEXT TO BE ANALYSED:
+    "{expert_text}"
+    ###END OF TEXT
+
+    ###DATASET COLUMNS:
+
+  expected_output: >
+    List of dicts with parameter names extracted from expert text with descriptions and units.
+  agent: truck_operation_analyst
+
+extract_rules_task:
+  description: >
+    Analyze expert text in parenthesis to identify rules concerting unsual truck operation parameters' values 
+
+    Note that:
+    - You must remember that examples are only to help you understand the task, you must not include them in the output.
+    - When naming parameters you must use "parameter", and when naming states you must use either INLIER or OUTLIER.
+    - Formulate list of rules in structured format utlizing provided parameters description, following this example:
+    - Before giving final response you must verify your answer using tool available to you.
+
+    ###EXAMPLE - TO NOT BE INCLUDED IN OUTPUT:
+    "IF [parameter1] > 100 AND [parameter2] < 10 THEN OUTLIER"
+    ###END OF EXAMPLE
+
+    - Do not include examples in the output, only identified rules from text.
+
+    ###EXPERT TEXT TO BE ANALYSED:
+    "{expert_text}"
+    ###END OF TEXT
+  
+  expected_output: >
+    List of rules in format of list of strings. List has to follow pattern: "IF [parameter] AND [parameter] ... THEN [state]", where 
+    - [parameter] is a parameter name with comparison operator (one of: >, >=, <, <=) and a value.
+    - [state] is a description whether truck is OUTLIER or INLIER.
+    Combination of rules may take on any number of parameters combined using AND (e.g. "IF [parameter1] AND [parameter2] AND [parameter3] ... THEN [state]").
+    Skip "[" and "]" in the output.
+  agent: lead_truck_operation_analyst
+
+integrate_rules_task:
+  description: >
+    Use chain-of-thought to integrate rules provided with set {rules} following this thought process:
+    0. Skip all rules depicting "INLIER".
+    1. Logically combine rules with the same parameter mentioned over their value spaces.
+    2. Ensure the integrated rules are consistent and comprehensive.
+    3. Ensure there are no inconsistencies in the rules.
+    
+    Note that:
+    - Rules must always have parameter names consistent with {dataset_columns}.
+    - Keywords like "AND", "IF", "OUTLIER", "INLIER" and "THEN" should be in uppercase.
+    - If some rules from the indetified set of rules depicting "OUTLIER" can't be merged with any other rules without contradictions and inconsitences, then they should also be included in the final output.
+    - You must not use "OR" under any circumstances, split the rules into separate ones in such case - follow example:
+  
+    ###EXAMPLE:
+    Incorrect: ["IF Total no. compaction cycles > 100 AND (Total no. compaction cycles with p>100 bar < 10 OR Total fuel consumed [dm3] > 40) THEN OUTLIER"]
+    Correct: [  "IF Total no. compaction cycles > 100 AND Total no. compaction cycles with p>100 bar < 10 THEN OUTLIER", 
+                "IF Total no. compaction cycles > 100 AND Total fuel consumed [dm3] > 40 THEN OUTLIER" ]
+    ###END OF EXAMPLE
+  expected_output: >
+    List of rules in the format of list of strings with no additional data.
+    Each rule must follow the pattern: "IF parameter1 > value1 AND parameter2 <= value2 THEN state", 
+    where parameters are logically combined based on their value ranges.
+  agent: machinery_professor
+
+combine_and_verify_rules_task:
+  description: >
+    Given two provided sets of rules, merge the sets into one set of rules following this thought process:
+    1. Ensure the combined set of rules are consistent and comprehensive.
+    2. Ensure there are no inconsistencies in the combined set of rules.
+    3. Ensure there are no contradictions in the combined set of rules.
+    4. Ensure there is no skipped information in the combined set of rules, meaning under no circumstances 
+    any rule should be skipped or not included in the final output, given particular rule is not contradictory/inconsistent. 
+    5. Only rules describing given example being "OUTLIER" are to be saved. Rules for "INLIER" should be removed from the combined set.
+
+    Note that:
+    - Your task is to not modify particular rules under any circumstances
+    - You must not use "OR" under any circumstances, split the rules into separate ones in such case - follow example:
+
+    ###EXAMPLE:
+    Incorrect: ["IF Total no. compaction cycles > 100 AND (Total no. compaction cycles with p>100 bar < 10 OR Total fuel consumed [dm3] > 40) THEN OUTLIER"]
+    Correct: [  "IF Total no. compaction cycles > 100 AND Total no. compaction cycles with p>100 bar < 10 THEN OUTLIER", 
+                "IF Total no. compaction cycles > 100 AND Total fuel consumed [dm3] > 40 THEN OUTLIER" ]
+    ###END OF EXAMPLE
+
+  expected_output: >
+    Set of rules merged from two sets of rules, with no contradictions, inconsistencies or skipped information without any rules depicting "INLIER".
+
+format_rules_task:
+  description: >
+    Format rules so that each parameter from list {dataset_columns} is wrapped between dollar signs $.
+    Follow this example:
+
+    ###EXAMPLE:
+    Rule: "IF Total no. compaction cycles > 100 AND Total no. compaction cycles with p>100 bar < 10 THEN OUTLIER"
+    Formatted rule: "IF $Total no. compaction cycles$ > 100 AND $Total no. compaction cycles with p>100 bar$ < 10 THEN OUTLIER"
+    ###END OF EXAMPLE
+  expected_output: >
+    List of strings with rules formatted as described in the task.
+  agent: data_engineer

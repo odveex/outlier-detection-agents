@@ -1,0 +1,10 @@
+fastapi
+pydantic
+redis
+pandas
+celery
+scikit-learn
+imodels
+uvicorn
+crewai
+crewai-tools
