@@ -1,10 +1,18 @@
 import json
 import redis
 from contextlib import contextmanager
+import os
 
 @contextmanager
 def redis_connection(db: int):
-    r = redis.Redis(host="redis", port=6379, db=db)
+    r = redis.Redis(
+        host="34.51.167.26",
+        port=6379,
+        username="default",
+        password=os.environ.get("REDIS_PASSWORD"),
+        db=db,
+        socket_timeout=5  # Avoid hanging indefinitely
+    )
     try:
         yield r
     finally:
@@ -12,4 +20,3 @@ def redis_connection(db: int):
 
 def serialize_list(list_):
     return json.dumps(list_)
-
