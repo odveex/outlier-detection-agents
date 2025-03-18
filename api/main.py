@@ -17,7 +17,10 @@ import uuid
 import logging
 import json
 import traceback
-from typing import List, Optional, Dict, Any, Union
+from typing import List, Dict, Any
+import os
+
+os.environ["OTEL_SDK_DISABLED"] = "true"
 
 from utils.tasks import outlier_detection_from_data, extract_and_integrate_expert_rules
 from utils.redis import redis_connection
