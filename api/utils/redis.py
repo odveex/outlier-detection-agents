@@ -6,7 +6,7 @@ import os
 @contextmanager
 def redis_connection(db: int):
     r = redis.Redis(
-        host="34.51.167.26",
+        host=os.environ.get("REDIS_ADDRESS"),
         port=6379,
         username="default",
         password=os.environ.get("REDIS_PASSWORD"),
